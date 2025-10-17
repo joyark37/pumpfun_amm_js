@@ -10,7 +10,7 @@ import {
   pumpfunAMMSell,
   quoteAMM,
 } from "./pump/amm/amm";
-import { makePumpfunInnerInstance, quoteInner } from "./pump/inner/inner";
+import { makePumpfunInnerInstance, quoteBuyInner } from "./pump/inner/inner";
 
 // pumpfun
 async function pumpfunRun(
@@ -39,9 +39,9 @@ async function pumpfunRun(
       return;
     }
     const bondingCurve = new PublicKey(
-      "38tTRPyfo8PCC8Wd5F11rTyfJDKFnkJ5dwj1zKi6dNjg",
+      "5FqRvNwybPbXRd1BPdB2sNp3kFYCzZv2occUz4vFz4Um",
     );
-    await quoteInner(
+    await quoteBuyInner(
       instance,
       wallet,
       connection,
