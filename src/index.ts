@@ -1,10 +1,18 @@
+import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { Keypair, Connection } from "@solana/web3.js";
+import { Keypair, Connection, PublicKey } from "@solana/web3.js";
 import * as bs58 from "bs58";
 import * as dotenv from "dotenv";
 dotenv.config();
-import { makePumpfunInstance, pumpfunBuy, pumpfunSell } from "./pump/pump";
+import {
+  makePumpfunAMMInstance,
+  pumpfunAMMBuy,
+  pumpfunAMMSell,
+  quoteAMM,
+} from "./pump/amm/amm";
+import { makePumpfunInnerInstance, quoteInner } from "./pump/inner/inner";
 
+// pumpfun
 async function pumpfunRun(
   provider: AnchorProvider,
   wallet: Keypair,
@@ -12,13 +20,35 @@ async function pumpfunRun(
 ) {
   console.log("pumpfun program start...");
 
-  const instance = await makePumpfunInstance(provider);
-  if (instance == null) {
-    console.log("make pumpfun instance failed");
-    return;
+  {
+    // const instance = await makePumpfunAMMInstance(provider);
+    // if (instance == null) {
+    //   console.log("make pumpfun instance failed");
+    //   return;
+    // }
+    // await pumpfunAMMBuy(instance, wallet, connection);
+    // await pumpfunAMMSell(instance, wallet, connection);
+    // const pool = new PublicKey("6tAqdcqbenFjietsUN9TJd2RZV5aL4qvcQdRtXNXrgzD");
+    // await quoteAMM(instance, wallet, connection, new anchor.BN(1121408423), pool);
   }
-  // await pumpfunBuy(instance, wallet, connection);
-  await pumpfunSell(instance, wallet, connection);
+
+  {
+    const instance = await makePumpfunInnerInstance(provider);
+    if (instance == null) {
+      console.log("make pumpfun inner instance failed");
+      return;
+    }
+    const bondingCurve = new PublicKey(
+      "38tTRPyfo8PCC8Wd5F11rTyfJDKFnkJ5dwj1zKi6dNjg",
+    );
+    await quoteInner(
+      instance,
+      wallet,
+      connection,
+      new anchor.BN(1000000000),
+      bondingCurve,
+    );
+  }
 }
 
 async function main() {

@@ -12,12 +12,15 @@ import {
 import {
   getAssociatedTokenAddressSync,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAccount,
 } from "@solana/spl-token";
-import { executeCall } from "../utils";
+import { executeCall } from "../../utils";
 import fs from "fs";
-const idl = JSON.parse(fs.readFileSync("./src/pump/pump_amm.json", "utf-8"));
+const idl = JSON.parse(
+  fs.readFileSync("./src/pump/amm/pump_amm.json", "utf-8"),
+);
 
-export async function makePumpfunInstance(provider: AnchorProvider) {
+export async function makePumpfunAMMInstance(provider: AnchorProvider) {
   let pumpfun: Program<PumpAmm>;
   try {
     pumpfun = new Program<PumpAmm>(idl, provider);
@@ -29,7 +32,7 @@ export async function makePumpfunInstance(provider: AnchorProvider) {
   }
 }
 
-export async function pumpfunBuy(
+export async function pumpfunAMMBuy(
   pumpfun: Program<PumpAmm>,
   wallet: Keypair,
   connection: Connection,
@@ -142,7 +145,7 @@ export async function pumpfunBuy(
   await executeCall(ins, connection, wallet);
 }
 
-export async function pumpfunSell(
+export async function pumpfunAMMSell(
   pumpfun: Program<PumpAmm>,
   wallet: Keypair,
   connection: Connection,
@@ -256,4 +259,62 @@ export async function pumpfunSell(
   }
 
   await executeCall(ins, connection, wallet);
+}
+
+export async function quoteAMM(
+  pumpfun: Program<PumpAmm>,
+  wallet: Keypair,
+  connection: Connection,
+  baseAmountOut: anchor.BN,
+  pool: PublicKey,
+) {
+  try {
+    // 读取池子状态
+    const poolAccount = await pumpfun.account.pool.fetch(pool);
+    // 假设 metadata 包含 baseReserve 和 quoteReserve
+    // 请根据 pump_amm.json 的 PumpAmm 定义替换实际字段名
+    const baseReserve = poolAccount.poolBaseTokenAccount;
+    const quoteReserve = poolAccount.poolQuoteTokenAccount;
+
+    let baseReserveAcc = await getAccount(connection, baseReserve);
+    let quoteReserveAcc = await getAccount(connection, quoteReserve);
+
+    console.log("base", baseReserveAcc.amount);
+    console.log("quote", quoteReserveAcc.amount);
+    const baseReserveNum = baseReserveAcc.amount;
+    const quoteReserveNum = quoteReserveAcc.amount;
+
+    // pumpfun.methods.createPool();
+
+    //   if (!baseReserve || !quoteReserve) {
+    //     console.error("无法获取池子储备量，请检查 PumpAmm 账户定义！");
+    //     return;
+    //   }
+
+    // 计算报价（常数乘积公式：x * y = k）
+    const baseAmountOutNum = BigInt(baseAmountOut.toNumber());
+    // const baseReserveNum = baseReserve.toNumber();
+    // const quoteReserveNum = quoteReserve.toNumber();
+
+    // 买入公式：quoteAmountIn = (baseAmountOut * quoteReserve) / (baseReserve - baseAmountOut)
+    const quoteAmountIn =
+      (baseAmountOutNum * quoteReserveNum) /
+      (baseReserveNum - baseAmountOutNum);
+
+    const slippage = 0;
+    const feeRate = 0;
+
+    // 考虑滑点
+    const quoteAmountInWithSlippage = quoteAmountIn;
+
+    // 考虑费用（假设费用在 quote token 上收取）
+    const quoteAmountInWithFee = quoteAmountInWithSlippage;
+
+    console.log("Base Amount Out:", baseAmountOutNum);
+    console.log("Quote Amount In (无滑点):", quoteAmountIn);
+    console.log("Quote Amount In (含滑点):", quoteAmountInWithSlippage);
+    console.log("Quote Amount In (含费用):", quoteAmountInWithFee);
+  } catch (error) {
+    console.error("手动询价失败:", error);
+  }
 }
