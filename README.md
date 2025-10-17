@@ -13,6 +13,9 @@ TODO
 
 ## Raydium
 
+
+* 链上合约地址：https://github.com/raydium-io/raydium-cpi-example/blob/master/README.md
+
 ### 合约接入方式
 * AMM合约接入方式：https://github.com/raydium-io/raydium-cpi-example/blob/master/amm-cpi/programs/amm-cpi/Cargo.toml
 
