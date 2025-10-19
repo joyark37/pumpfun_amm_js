@@ -25,6 +25,7 @@
     "@pump-fun/pump-sdk": "^1.18.11",
     "@raydium-io/raydium-sdk-v2": "^0.2.30-alpha",
     "bn.js": "^5.2.2",
-    "bs58": "^6.0.0"
+    "bs58": "^6.0.0",
+    "ethers": "^6.15.0"
   }
 }

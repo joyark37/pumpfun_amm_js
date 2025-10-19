@@ -16,8 +16,91 @@ import {
 } from "@solana/spl-token";
 import { executeCall } from "../../utils";
 import fs from "fs";
-import { publicKey } from "@raydium-io/raydium-sdk-v2";
+import { formatUnits } from "ethers";
 const idl = JSON.parse(fs.readFileSync("./src/pump/inner/pump.json", "utf-8"));
+
+import {
+  getBuyTokenAmountFromSolAmount,
+  getSellSolAmountFromTokenAmount,
+} from "@pump-fun/pump-sdk";
+
+export async function quoteBuyBySdk(
+  pumpfun: Program<Pump>,
+  wallet: Keypair,
+  connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+) {
+  // 读取fee config
+  const feeConfigAccount = await pumpfun.account.feeConfig.fetch(feeConfig);
+
+  // 读取池子状态
+  const poolAccount = await pumpfun.account.bondingCurve.fetch(bondinCurve);
+
+  // 读取gobal
+  const gobalAccount = await pumpfun.account.global.fetch(gobal);
+
+  let amountOut = await getBuyTokenAmountFromSolAmount({
+    global: gobalAccount,
+    feeConfig: feeConfigAccount,
+    mintSupply: null,
+    bondingCurve: poolAccount,
+    amount: baseAmountIn,
+  });
+
+  // console.log("amount out: ", amountOut.toNumber());
+  console.log(
+    "Quote Token Amount out (无滑点):",
+    formatUnits(amountOut.toNumber().toFixed().toLocaleString(), 6),
+  );
+
+  const amountOutWithSlippage = (amountOut.toNumber() * 9800) / 10000;
+  console.log(
+    "Quote Token Amount out （有滑点):",
+    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 6),
+  );
+}
+
+export async function quoteSellBySdk(
+  pumpfun: Program<Pump>,
+  wallet: Keypair,
+  connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+) {
+  // 读取fee config
+  const feeConfigAccount = await pumpfun.account.feeConfig.fetch(feeConfig);
+
+  // 读取池子状态
+  const poolAccount = await pumpfun.account.bondingCurve.fetch(bondinCurve);
+
+  // 读取gobal
+  const gobalAccount = await pumpfun.account.global.fetch(gobal);
+
+  let amountOut = await getSellSolAmountFromTokenAmount({
+    global: gobalAccount,
+    feeConfig: feeConfigAccount,
+    mintSupply: gobalAccount.tokenTotalSupply,
+    bondingCurve: poolAccount,
+    amount: baseAmountIn,
+  });
+
+  // console.log("amount out: ", amountOut.toNumber());
+  console.log(
+    "Quote Token Amount out (无滑点):",
+    formatUnits(amountOut.toNumber().toFixed().toLocaleString(), 9),
+  );
+
+  const amountOutWithSlippage = (amountOut.toNumber() * 9800) / 10000;
+  console.log(
+    "Quote Token Amount out （有滑点):",
+    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 9),
+  );
+}
 
 export async function makePumpfunInnerInstance(provider: AnchorProvider) {
   let pumpfun: Program<Pump>;
@@ -44,7 +127,10 @@ export async function quoteBuyInner(
     bondinCurve,
     true,
   );
-  console.log("Quote Token Amount out (无滑点):", tokenOutAmount);
+  console.log(
+    "Quote Token Amount out (无滑点):",
+    formatUnits(tokenOutAmount.toFixed().toLocaleString(), 6),
+  );
 }
 
 export async function quoteSellInner(
@@ -70,12 +156,8 @@ async function quoteIntenal(
   // 读取池子状态
   const poolAccount = await pumpfun.account.bondingCurve.fetch(bondinCurve);
 
-  const totalBase =
-    poolAccount.virtualSolReserves.toNumber() +
-    poolAccount.realSolReserves.toNumber();
-  const totalQuote =
-    poolAccount.virtualTokenReserves.toNumber() +
-    poolAccount.realTokenReserves.toNumber();
+  const totalBase = poolAccount.virtualSolReserves.toNumber();
+  const totalQuote = poolAccount.virtualTokenReserves.toNumber();
 
   // for debug
   {

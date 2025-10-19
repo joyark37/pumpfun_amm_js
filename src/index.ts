@@ -1,6 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { Keypair, Connection, PublicKey } from "@solana/web3.js";
+import {
+  Keypair,
+  Connection,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
 import * as bs58 from "bs58";
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -10,7 +15,12 @@ import {
   pumpfunAMMSell,
   quoteAMM,
 } from "./pump/amm/amm";
-import { makePumpfunInnerInstance, quoteBuyInner } from "./pump/inner/inner";
+import {
+  makePumpfunInnerInstance,
+  quoteBuyInner,
+  quoteBuyBySdk,
+  quoteSellBySdk,
+} from "./pump/inner/inner";
 
 // pumpfun
 async function pumpfunRun(
@@ -39,14 +49,30 @@ async function pumpfunRun(
       return;
     }
     const bondingCurve = new PublicKey(
-      "5FqRvNwybPbXRd1BPdB2sNp3kFYCzZv2occUz4vFz4Um",
+      "AQb6jcee5jAd4hw1CtszkbPHWUgpRRKJom2Qv1Ec7ZHQ",
     );
-    await quoteBuyInner(
+    const feeConfig = new PublicKey(
+      "8Wf5TiAheLUqBrKXeYg2JtAFFMWtKdG2BSFgqUcPVwTt",
+    );
+    const gobal = new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf");
+    // await quoteBySdk(
+    //   instance,
+    //   wallet,
+    //   connection,
+    //   new anchor.BN(LAMPORTS_PER_SOL * 1),
+    //   bondingCurve,
+    //   feeConfig,
+    //   gobal,
+    // );
+    //
+    await quoteSellBySdk(
       instance,
       wallet,
       connection,
-      new anchor.BN(1000000000),
+      new anchor.BN(10 ** 7 * 10 ** 6),
       bondingCurve,
+      feeConfig,
+      gobal,
     );
   }
 }
