@@ -142,7 +142,7 @@ export async function pumpfunAMMBuy(
     throw e;
   }
 
-  await executeCall(ins, connection, wallet);
+  await executeCall([ins], connection, wallet);
 }
 
 export async function pumpfunAMMSell(
@@ -258,7 +258,7 @@ export async function pumpfunAMMSell(
     throw e;
   }
 
-  await executeCall(ins, connection, wallet);
+  await executeCall([ins], connection, wallet);
 }
 
 export async function quoteAMM(

@@ -20,6 +20,7 @@ import {
   quoteBuyInner,
   quoteBuyBySdk,
   quoteSellBySdk,
+  executeBuyBySdk,
 } from "./pump/inner/inner";
 
 // pumpfun
@@ -48,9 +49,7 @@ async function pumpfunRun(
       console.log("make pumpfun inner instance failed");
       return;
     }
-    const bondingCurve = new PublicKey(
-      "AQb6jcee5jAd4hw1CtszkbPHWUgpRRKJom2Qv1Ec7ZHQ",
-    );
+
     const feeConfig = new PublicKey(
       "8Wf5TiAheLUqBrKXeYg2JtAFFMWtKdG2BSFgqUcPVwTt",
     );
@@ -65,14 +64,30 @@ async function pumpfunRun(
     //   gobal,
     // );
     //
-    await quoteSellBySdk(
+
+    // await quoteSellBySdk(
+    //   instance,
+    //   wallet,
+    //   connection,
+    //   new anchor.BN(10 ** 7 * 10 ** 6),
+    //   bondingCurve,
+    //   feeConfig,
+    //   gobal,
+    // );
+
+    const mint = new PublicKey("C3w4SZjUbSNwhgk5ebM2RDXDNz5hyvTTeWpAATGpump");
+    const bondingCurve = new PublicKey(
+      "AQb6jcee5jAd4hw1CtszkbPHWUgpRRKJom2Qv1Ec7ZHQ",
+    );
+    await executeBuyBySdk(
       instance,
       wallet,
       connection,
-      new anchor.BN(10 ** 7 * 10 ** 6),
+      new anchor.BN(0.001 * LAMPORTS_PER_SOL),
       bondingCurve,
       feeConfig,
       gobal,
+      mint,
     );
   }
 }

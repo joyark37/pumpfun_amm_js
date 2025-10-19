@@ -6,12 +6,12 @@ import {
 } from "@solana/web3.js";
 
 export async function executeCall(
-  ins: TransactionInstruction,
+  ins: TransactionInstruction[],
   connection: Connection,
   wallet: Keypair,
 ) {
   const tx = new Transaction();
-  tx.add(ins);
+  tx.add(...ins);
   console.log("make instruction success!");
 
   // 设置最近的 blockhash

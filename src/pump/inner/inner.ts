@@ -22,12 +22,33 @@ const idl = JSON.parse(fs.readFileSync("./src/pump/inner/pump.json", "utf-8"));
 import {
   getBuyTokenAmountFromSolAmount,
   getSellSolAmountFromTokenAmount,
+  PumpSdk,
 } from "@pump-fun/pump-sdk";
 
 export async function quoteBuyBySdk(
   pumpfun: Program<Pump>,
   wallet: Keypair,
   connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+) {
+  const amountOutWithSlippage = await quoteBuyBySdkInternal(
+    pumpfun,
+    baseAmountIn,
+    bondinCurve,
+    feeConfig,
+    gobal,
+  );
+  console.log(
+    "Quote Token Amount out （有滑点):",
+    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 6),
+  );
+}
+
+async function quoteBuyBySdkInternal(
+  pumpfun: Program<Pump>,
   baseAmountIn: anchor.BN,
   bondinCurve: PublicKey,
   feeConfig: PublicKey,
@@ -57,16 +78,120 @@ export async function quoteBuyBySdk(
   );
 
   const amountOutWithSlippage = (amountOut.toNumber() * 9800) / 10000;
-  console.log(
-    "Quote Token Amount out （有滑点):",
-    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 6),
+  return amountOutWithSlippage;
+}
+
+export async function executeBuyBySdk(
+  pumpfun: Program<Pump>,
+  wallet: Keypair,
+  connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+  mint: PublicKey,
+) {
+  const amountOutWithSlippage = await quoteBuyBySdkInternal(
+    pumpfun,
+    baseAmountIn,
+    bondinCurve,
+    feeConfig,
+    gobal,
   );
+
+  // 读取池子状态
+  const poolAccount = await pumpfun.account.bondingCurve.fetch(bondinCurve);
+
+  const poolAccountInfo = await connection.getAccountInfo(bondinCurve);
+  if (poolAccountInfo == null) return;
+
+  // 读取gobal
+  const gobalAccount = await pumpfun.account.global.fetch(gobal);
+
+  const pumpSDK = new PumpSdk();
+
+  let ins = await pumpSDK.buyInstructions({
+    global: gobalAccount,
+    bondingCurveAccountInfo: poolAccountInfo,
+    bondingCurve: poolAccount,
+    associatedUserAccountInfo: null,
+    mint: mint,
+    user: wallet.publicKey,
+    amount: new anchor.BN(amountOutWithSlippage),
+    solAmount: baseAmountIn,
+    slippage: 2000,
+  });
+
+  await executeCall(ins, connection, wallet);
+}
+
+export async function executeSellBySdk(
+  pumpfun: Program<Pump>,
+  wallet: Keypair,
+  connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+  mint: PublicKey,
+) {
+  const amountOutWithSlippage = await quoteSellBySdkInternal(
+    pumpfun,
+    baseAmountIn,
+    bondinCurve,
+    feeConfig,
+    gobal,
+  );
+
+  // 读取池子状态
+  const poolAccount = await pumpfun.account.bondingCurve.fetch(bondinCurve);
+
+  const poolAccountInfo = await connection.getAccountInfo(bondinCurve);
+  if (poolAccountInfo == null) return;
+
+  // 读取gobal
+  const gobalAccount = await pumpfun.account.global.fetch(gobal);
+
+  const pumpSDK = new PumpSdk();
+
+  let ins = await pumpSDK.sellInstructions({
+    global: gobalAccount,
+    bondingCurveAccountInfo: poolAccountInfo,
+    bondingCurve: poolAccount,
+    mint: mint,
+    user: wallet.publicKey,
+    amount: baseAmountIn,
+    solAmount: new anchor.BN(amountOutWithSlippage),
+    slippage: 2000,
+  });
+
+  await executeCall(ins, connection, wallet);
 }
 
 export async function quoteSellBySdk(
   pumpfun: Program<Pump>,
   wallet: Keypair,
   connection: Connection,
+  baseAmountIn: anchor.BN,
+  bondinCurve: PublicKey,
+  feeConfig: PublicKey,
+  gobal: PublicKey,
+) {
+  const amountOutWithSlippage = await quoteSellBySdkInternal(
+    pumpfun,
+    baseAmountIn,
+    bondinCurve,
+    feeConfig,
+    gobal,
+  );
+  console.log(
+    "Quote Token Amount out （有滑点):",
+    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 9),
+  );
+}
+
+async function quoteSellBySdkInternal(
+  pumpfun: Program<Pump>,
   baseAmountIn: anchor.BN,
   bondinCurve: PublicKey,
   feeConfig: PublicKey,
@@ -96,10 +221,8 @@ export async function quoteSellBySdk(
   );
 
   const amountOutWithSlippage = (amountOut.toNumber() * 9800) / 10000;
-  console.log(
-    "Quote Token Amount out （有滑点):",
-    formatUnits(amountOutWithSlippage.toFixed().toLocaleString(), 9),
-  );
+
+  return amountOutWithSlippage;
 }
 
 export async function makePumpfunInnerInstance(provider: AnchorProvider) {
@@ -204,8 +327,8 @@ export async function innerBuy(
   const maxSloCost = new anchor.BN(20000);
 
   let accounts = {
-    global: new PublicKey(""),
-    feeRecipient: new PublicKey(""),
+    global: new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"),
+    feeRecipient: new PublicKey("FWsW1xNtWscwNmKv6wVsU1iTzRN6wmmk3MjxRP5tT7hz"),
     mint: new PublicKey(""),
     bondingCurve: new PublicKey(""),
     associatedBondingCurve: new PublicKey(""),
@@ -214,11 +337,15 @@ export async function innerBuy(
     systemProgram: new PublicKey("11111111111111111111111111111111"),
     tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     creatorVault: new PublicKey(""),
-    eventAuthority: new PublicKey(""),
+    eventAuthority: new PublicKey(
+      "Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1",
+    ),
     program: new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
-    globalVolumeAccumulator: new PublicKey(""),
+    globalVolumeAccumulator: new PublicKey(
+      "Hq2wp8uJ9jCPsYgNHex8RtqdvMPfVGoYwjvF1ATiwn2Y",
+    ),
     userVolumeAccumulator: new PublicKey(""),
-    feeConfig: new PublicKey(""),
+    feeConfig: new PublicKey("8Wf5TiAheLUqBrKXeYg2JtAFFMWtKdG2BSFgqUcPVwTt"),
     feeProgram: new PublicKey("pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"),
   };
 
@@ -233,7 +360,7 @@ export async function innerBuy(
     throw e;
   }
 
-  await executeCall(ins, connection, wallet);
+  await executeCall([ins], connection, wallet);
 }
 
 export async function innerSell(
@@ -275,5 +402,5 @@ export async function innerSell(
     throw e;
   }
 
-  await executeCall(ins, connection, wallet);
+  await executeCall([ins], connection, wallet);
 }
